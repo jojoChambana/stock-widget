@@ -3,6 +3,9 @@ title: StockChart Widget Documentation
 description: Interactive stock chart built with React, TypeScript, and Visx
 ---
 
+[![Deploy to GitHub Pages](https://github.com/jojoChambana/stock-widget/actions/workflows/deploy.yml/badge.svg)](https://github.com/jojoChambana/stock-widget/actions/workflows/deploy.yml)
+[![View Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=flat-square&logo=github)](https://jojoChambana.github.io/stock-widget/)
+
 # 📈 StockChart Component
 
 The `StockChart` component renders a line chart of daily stock prices. It uses real-time data from the [Alpha Vantage API](https://www.alphavantage.co/) and shows a tooltip with crosshairs when you hover over the chart.
