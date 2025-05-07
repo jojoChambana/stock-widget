@@ -1,4 +1,3 @@
-// src/components/StockChart.tsx
 import React, { useEffect, useState } from "react";
 import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
@@ -20,6 +19,8 @@ const margin = { top: 20, right: 30, bottom: 50, left: 60 };
 export const StockChart: React.FC = () => {
   const [data, setData] = useState<StockDataPoint[]>([]);
   const [isMock, setIsMock] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [cooldown, setCooldown] = useState<number>(0);
 
   const {
     showTooltip,
@@ -29,15 +30,15 @@ export const StockChart: React.FC = () => {
     tooltipTop = 0,
   } = useTooltip<StockDataPoint>();
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+    setLoading(true);
+
+    try {
       const API_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
       const SYMBOL = import.meta.env.VITE_STOCK_SYMBOL;
 
       if (!API_KEY || !SYMBOL) {
-        console.warn(
-          "Missing environment variables for API_KEY or SYMBOL. Using mock data."
-        );
+        console.warn("Missing environment variables. Using mock data.");
         setIsMock(true);
         const mockData: StockDataPoint[] = Array.from({ length: 30 }).map(
           (_, i) => ({
@@ -49,49 +50,58 @@ export const StockChart: React.FC = () => {
         return;
       }
 
-      try {
-        const response = await fetch(
-          `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`
-        );
-        const json = await response.json();
+      const res = await fetch(
+        `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`
+      );
+      const json = await res.json();
 
-        if (json["Error Message"]) {
-          throw new Error(`Alpha Vantage API Error: ${json["Error Message"]}`);
-        }
-
-        const raw = json["Time Series (Daily)"];
-
-        if (!raw || typeof raw !== "object") {
-          throw new Error(
-            "API response missing expected 'Time Series (Daily)' data."
-          );
-        }
-
-        interface TimeSeriesValues {
-          "1. open": string;
-          "2. high": string;
-          "3. low": string;
-          "4. close": string;
-          "5. volume": string;
-        }
-
-        const parsedData: StockDataPoint[] = Object.entries(
-          raw as Record<string, TimeSeriesValues>
-        )
-          .map(([date, values]) => ({
-            date: new Date(date),
-            price: parseFloat(values["4. close"]),
-          }))
-          .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-        setData(parsedData);
-      } catch (error) {
-        console.error("Error fetching data", error);
+      if (json["Error Message"] || !json["Time Series (Daily)"]) {
+        throw new Error("Alpha Vantage API error");
       }
-    };
 
+      interface TimeSeriesValues {
+        "1. open": string;
+        "2. high": string;
+        "3. low": string;
+        "4. close": string;
+        "5. volume": string;
+      }
+
+      const parsed: StockDataPoint[] = Object.entries(
+        json["Time Series (Daily)"] as Record<string, TimeSeriesValues>
+      )
+        .map(([date, values]) => ({
+          date: new Date(date),
+          price: parseFloat(values["4. close"]),
+        }))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      setData(parsed);
+      setIsMock(false);
+    } catch (err) {
+      console.error("Fetch failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (cooldown === 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleRefresh = () => {
+    if (cooldown > 0 || loading) return;
+    fetchData();
+    setCooldown(60); // Set cooldown to 60 seconds
+  };
 
   if (!data.length) return <p>Loading chart...</p>;
 
@@ -146,6 +156,30 @@ export const StockChart: React.FC = () => {
           ⚠️ Using mock data – check your API key or network connection.
         </div>
       )}
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button
+          onClick={handleRefresh}
+          disabled={cooldown > 0 || loading}
+          style={{
+            padding: "8px 16px",
+            fontSize: "14px",
+            backgroundColor: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: cooldown > 0 || loading ? "not-allowed" : "pointer",
+            opacity: cooldown > 0 || loading ? 0.6 : 1,
+          }}
+        >
+          {loading
+            ? "Loading..."
+            : cooldown > 0
+            ? `Cooldown: ${cooldown}s`
+            : "Refresh Data"}
+        </button>
+      </div>
+
       <svg width={width} height={height}>
         <Group>
           <LinePath
