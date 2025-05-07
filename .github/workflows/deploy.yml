@@ -26,6 +26,9 @@ jobs:
 
       - name: Build the project
         run: npm run build
+        env:
+          VITE_ALPHA_VANTAGE_KEY: ${{ secrets.VITE_ALPHA_VANTAGE_KEY }}
+          VITE_STOCK_SYMBOL: ${{ secrets.VITE_STOCK_SYMBOL }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

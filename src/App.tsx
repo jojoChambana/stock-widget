@@ -1,13 +1,19 @@
-import React from "react";
+// src/App.tsx
 import { StockChart } from "./components/StockChart";
 
-const App: React.FC = () => {
+export default function App() {
   return (
-    <main style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <h1 style={{ marginBottom: "1rem" }}>📈 Stock Price Chart</h1>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        margin: 0,
+        background: "#f9f9f9",
+      }}
+    >
       <StockChart />
-    </main>
+    </div>
   );
-};
-
-export default App;
+}
