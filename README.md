@@ -17,6 +17,7 @@ The `StockChart` component renders a line chart of daily stock prices. It uses r
 - Responsive SVG with crosshair lines
 - Alpha Vantage API integration
 - Written in TypeScript using React + Visx
+- Supports use as both an iframe embed and React component
 
 ## 🧪 Example Usage
 
@@ -90,6 +91,60 @@ interface TimeSeriesValues {
 - Visx for chart rendering
 - TypeScript for type safety
 - Alpha Vantage for stock data
+
+---
+
+## 🌐 Dual Usage Options
+
+This project supports both embedding via `<iframe>` **and** importing as a React component. Choose the mode that best fits your application.
+
+### 1️⃣ Embed via `<iframe>`
+
+You can use the hosted GitHub Pages version anywhere:
+
+```html
+<iframe
+  src="https://jojochambana.github.io/stock-widget/"
+  width="820"
+  height="420"
+  style="border: none;"
+  title="Stock Widget"
+></iframe>
+```
+
+> ✅ Best for: static sites, CMS embeds, or quick integrations
+
+---
+
+### 2️⃣ Import as a React Component
+
+Install locally via Git or npm:
+
+```bash
+npm install jojoChambana/stock-widget
+```
+
+Then use it in your app:
+
+```tsx
+import { StockChart } from "stock-widget";
+
+function App() {
+  return <StockChart />;
+}
+```
+
+> ✅ Best for: full React apps, design systems, or dashboards
+
+---
+
+### 📦 Exports
+
+This package includes:
+
+- `main`: UMD build (`stock-widget.umd.js`) for `<script>` usage
+- `module`: ESM build (`stock-widget.es.js`) for modern bundlers
+- `types`: TypeScript declarations (`index.d.ts`)
 
 ---
 
