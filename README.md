@@ -149,3 +149,4 @@ This package includes:
 ---
 
 Fork this project, add your own API key in `.env.local`, and run `npm run dev` to get started.
+`
