@@ -3,7 +3,7 @@ import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Group } from "@visx/group";
-import { Tooltip, useTooltip, defaultStyles } from "@visx/tooltip";
+import { useTooltip } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
 import { bisector } from "d3-array";
 
@@ -30,61 +30,6 @@ export const StockChart: React.FC = () => {
     tooltipTop = 0,
   } = useTooltip<StockDataPoint>();
 
-  const fetchData = async () => {
-    setLoading(true);
-
-    try {
-      const API_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
-      const SYMBOL = import.meta.env.VITE_STOCK_SYMBOL;
-
-      if (!API_KEY || !SYMBOL) {
-        console.warn("Missing environment variables. Using mock data.");
-        setIsMock(true);
-        const mockData: StockDataPoint[] = Array.from({ length: 30 }).map(
-          (_, i) => ({
-            date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000),
-            price: 100 + Math.sin(i / 2) * 10 + Math.random() * 5,
-          })
-        );
-        setData(mockData);
-        return;
-      }
-
-      const res = await fetch(
-        `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`
-      );
-      const json = await res.json();
-
-      if (json["Error Message"] || !json["Time Series (Daily)"]) {
-        throw new Error("Alpha Vantage API error");
-      }
-
-      interface TimeSeriesValues {
-        "1. open": string;
-        "2. high": string;
-        "3. low": string;
-        "4. close": string;
-        "5. volume": string;
-      }
-
-      const parsed: StockDataPoint[] = Object.entries(
-        json["Time Series (Daily)"] as Record<string, TimeSeriesValues>
-      )
-        .map(([date, values]) => ({
-          date: new Date(date),
-          price: parseFloat(values["4. close"]),
-        }))
-        .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-      setData(parsed);
-      setIsMock(false);
-    } catch (err) {
-      console.error("Fetch failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -96,6 +41,76 @@ export const StockChart: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
+
+  const fetchData = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      const API_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
+      const SYMBOL = import.meta.env.VITE_STOCK_SYMBOL;
+
+      if (!API_KEY || !SYMBOL) {
+        throw new Error("Missing environment variables");
+      }
+
+      const res = await fetch(
+        `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${SYMBOL}&apikey=${API_KEY}`
+      );
+
+      const json: Record<string, unknown> = await res.json();
+
+      if (typeof json !== "object" || json === null) {
+        throw new Error("Invalid API response");
+      }
+
+      if ("Error Message" in json) {
+        throw new Error("Alpha Vantage API error: Invalid symbol or function.");
+      }
+
+      if ("Note" in json) {
+        console.warn("API rate limit exceeded:", json["Note"]);
+        throw new Error("Rate limit exceeded.");
+      }
+
+      if (!("Time Series (Daily)" in json)) {
+        throw new Error("Missing time series data.");
+      }
+
+      interface TimeSeriesValues {
+        "1. open": string;
+        "2. high": string;
+        "3. low": string;
+        "4. close": string;
+        "5. volume": string;
+      }
+
+      const raw = json["Time Series (Daily)"] as Record<
+        string,
+        TimeSeriesValues
+      >;
+
+      const parsed: StockDataPoint[] = Object.entries(raw)
+        .map(([date, values]) => ({
+          date: new Date(date),
+          price: parseFloat(values["4. close"]),
+        }))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      setData(parsed);
+      setIsMock(false);
+    } catch (err) {
+      console.warn("Falling back to mock data due to error:", err);
+      const mockData: StockDataPoint[] = Array.from({ length: 30 }).map(
+        (_, i) => ({
+          date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000),
+          price: 100 + Math.sin(i / 2) * 10 + Math.random() * 5,
+        })
+      );
+      setData(mockData);
+      setIsMock(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRefresh = () => {
     if (cooldown > 0 || loading) return;
@@ -137,7 +152,7 @@ export const StockChart: React.FC = () => {
     showTooltip({
       tooltipData: d,
       tooltipLeft: xScale(d.date),
-      tooltipTop: yScale(d.price), // 👈 anchors tooltip to price line
+      tooltipTop: yScale(d.price),
     });
   };
 
@@ -218,7 +233,6 @@ export const StockChart: React.FC = () => {
                 fill="#007bff"
                 stroke="white"
               />
-
               <foreignObject
                 x={tooltipLeft + 10}
                 y={tooltipTop - 30}
@@ -243,18 +257,6 @@ export const StockChart: React.FC = () => {
             </>
           )}
         </Group>
-        {tooltipData && (
-          <Tooltip
-            top={tooltipTop - 10}
-            left={tooltipLeft + 10}
-            style={defaultStyles}
-          >
-            <div>
-              <strong>{tooltipData.date.toDateString()}</strong>
-            </div>
-            <div>Price: ${tooltipData.price.toFixed(2)}</div>
-          </Tooltip>
-        )}
       </svg>
     </div>
   );
