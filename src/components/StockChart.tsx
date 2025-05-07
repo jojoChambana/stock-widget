@@ -133,10 +133,11 @@ export const StockChart: React.FC = () => {
       x0.getTime() - d0.date.getTime() > d1.date.getTime() - x0.getTime()
         ? d1
         : d0;
+
     showTooltip({
       tooltipData: d,
       tooltipLeft: xScale(d.date),
-      tooltipTop: yScale(d.price),
+      tooltipTop: yScale(d.price), // 👈 anchors tooltip to price line
     });
   };
 
@@ -217,6 +218,28 @@ export const StockChart: React.FC = () => {
                 fill="#007bff"
                 stroke="white"
               />
+
+              <foreignObject
+                x={tooltipLeft + 10}
+                y={tooltipTop - 30}
+                width={100}
+                height={40}
+                pointerEvents="none"
+              >
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    fontSize: "12px",
+                    fontFamily: "Arial, sans-serif",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  ${tooltipData.price.toFixed(2)}
+                </div>
+              </foreignObject>
             </>
           )}
         </Group>
